@@ -1,6 +1,6 @@
 # emblem-exporter
 
-GIO wrapper script written in Python 3, designed for rapid import/export and clearing of Nautilus/Caja emblems. It will use the GIO cli to generate a JSON export of all the emblems attached to files/folders in a specified path. Similarly, it can ingest a JSON file to reapply all possible emblems to items in a certain path.
+GIO wrapper script written in Python 3, designed for rapid import/export and clearing of Nautilus/Caja emblems. It will use the GIO CLI to generate a JSON export of all the emblems attached to files/folders in a specified path. Similarly, it can ingest a JSON file to reapply all exported emblems (for now it relies on absolute paths here).
 
 ### How to use
 
