@@ -37,7 +37,7 @@ def path_crawler(base_path, recurse):
             
     return items_to_process
 
-def scan_emblems(scan_path, json_file, recurse, clear):    
+def scan_emblems(scan_path, json_file, recurse, setonly, clear):    
     json_data_dict = {}
     
     logger.debug(f'Scan path: {scan_path}')
@@ -82,8 +82,11 @@ def scan_emblems(scan_path, json_file, recurse, clear):
                             emblems = []
                         
                         if not clear:
-                            logger.info(f'Found {emblems} emblem(s) for: {path}')
-                            json_data_dict.update({path: emblems})
+                            if setonly and len(emblems) == 0:
+                                logger.info(f'Ignoring empty emblem for: {path}')
+                            else:
+                                logger.info(f'Found {emblems} emblem(s) for: {path}')
+                                json_data_dict.update({path: emblems})
                             
                         else:
                             if len(emblems) > 0 :
@@ -126,7 +129,7 @@ def scan_emblems(scan_path, json_file, recurse, clear):
     
     # allow the export of partially completed scans
     except KeyboardInterrupt:
-        logger.Warning('Halting emblems scan due to KeyboardInterrupt!')
+        logger.warning('Halting emblems scan due to KeyboardInterrupt!')
         
     logger.info('Emblems scan completed.')
         
@@ -215,13 +218,14 @@ if __name__ == "__main__":
     optional.add_argument('-h', '--help', action='help', help='show this help message and exit')
     optional.add_argument('-r', '--recursive', help='Recursively scan the path for emblems', 
                           action='store_true')
+    optional.add_argument('-s', '--setonly', help='Ignore previously unset/cleared emblems during exports', action='store_true')
     
     args = parser.parse_args()
     
     if args.export:
         if os.path.isdir(args.source):
             if os.path.isdir(os.path.dirname(os.path.abspath(args.destination))):                
-                scan_emblems(args.source, args.destination, args.recursive, False)
+                scan_emblems(args.source, args.destination, args.recursive, args.setonly, False)
             else:
                 logger.critical('Invalid export path!')
                 raise SystemExit(2)
@@ -233,7 +237,7 @@ if __name__ == "__main__":
             option = input("ALL EMBLEM DATA IN THE SPECIFIED PATH WILL BE LOST! PROCEED (Y/N)? ")
             
             if option.upper() == 'Y':
-                scan_emblems(args.source, None, args.recursive, True)
+                scan_emblems(args.source, None, args.recursive, None, True)
             else:
                 logger.info('Emblem clearing aborted.')
         else:
