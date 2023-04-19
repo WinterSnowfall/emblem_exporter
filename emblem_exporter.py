@@ -124,7 +124,7 @@ def scan_emblems(scan_path, json_file, recurse, clear):
                     if processed_percentage != 100:
                         logger.info(f'Proccessed {processed_items} items, {processed_percentage}% of total.')
     
-    # allow the export/unsetting of partially completed scans
+    # allow the export of partially completed scans
     except KeyboardInterrupt:
         logger.Warning('Halting emblems scan due to KeyboardInterrupt!')
         
