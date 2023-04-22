@@ -78,7 +78,7 @@ def scan_emblems(scan_path, json_file, recurse, setonly, purge, clear):
                         # items with unset emblems will keep the attribute, but with a string, 
                         # not vstring, value of '[]' (this is either indended or an oversight) - 
                         # in this case, simply save an empty list in the JSON export file, 
-                        # since this it enable clearing any existing emblem values on import
+                        # since it will enable clearing any existing emblem values on import
                         if len(emblems) == 1 and emblems[0] == '':
                             emblems = []
                         
