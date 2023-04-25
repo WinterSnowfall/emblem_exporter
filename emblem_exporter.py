@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 '''
 @author: Winter Snowfall
-@version: 0.40
-@date: 22/04/2023
+@version: 1.00
+@date: 26/04/2023
 
 Warning: Built for use with python 3.6+
 '''
@@ -21,23 +21,33 @@ logger = logging.getLogger(__name__)
 #logging level for current logger
 logger.setLevel(logging.INFO) #DEBUG, INFO, WARNING, ERROR, CRITICAL
 
-def path_crawler(base_path, recurse):
+##CONSTANTS
+EXPECTED_METADATA_FIELDS = 5
+PATH_METADATA_FIELD_INDEX = 1
+EMBLEM_METADATA_FIELD_INDEX = 4
+MIN_PROGRESS_INDICATOR_ITEMS = 10000
+PROGRESS_INDICATOR_PERCENT_INTERVAL = 10
+TYPE_FILTERS = ('file', 'folder')
+
+def path_crawler(base_path, type_filter, recurse):
     items_to_process = []
     
     for dirpath, dirnames, filenames in os.walk(base_path):
         logger.debug(f'PC >>> Processing: {dirpath}')
         
-        for dirname in dirnames:
-            items_to_process.append(os.path.join(dirpath, dirname))
-        for file in filenames:
-            items_to_process.append(os.path.join(dirpath, file))
+        if not type_filter or type_filter == TYPE_FILTERS[0]:
+            for file in filenames:
+                items_to_process.append(os.path.join(dirpath, file))
+        if not type_filter or type_filter == TYPE_FILTERS[1]:
+            for dirname in dirnames:
+                items_to_process.append(os.path.join(dirpath, dirname))
         
         if not recurse:
             break
     
     return items_to_process
 
-def scan_emblems(scan_path, json_file, recurse, setonly, purge, clear):
+def scan_emblems(scan_path, json_file, type_filter, recurse, setonly, purge, clear):
     json_data_dict = {}
     
     logger.debug(f'Scan path: {scan_path}')
@@ -45,10 +55,15 @@ def scan_emblems(scan_path, json_file, recurse, setonly, purge, clear):
     if recurse:
         logger.warning('Recursive scans can take a VERY long time.')
     
-    items_to_process = path_crawler(scan_path, recurse)
+    items_to_process = path_crawler(scan_path, type_filter, recurse)
     nr_items_to_process = len(items_to_process)
     
     logger.info(f'Number of items to scan for emblems: {nr_items_to_process}')
+    
+    if nr_items_to_process > MIN_PROGRESS_INDICATOR_ITEMS:
+        show_progress = True
+    else:
+        show_progress = False
     
     processed_items = 0
     last_processed_percentage = 0
@@ -62,7 +77,7 @@ def scan_emblems(scan_path, json_file, recurse, setonly, purge, clear):
     
     try:
         for item in items_to_process:
-            if recurse:
+            if show_progress:
                 processed_items += 1
             
             try:
@@ -70,10 +85,11 @@ def scan_emblems(scan_path, json_file, recurse, setonly, purge, clear):
                                                       stdout=subprocess.PIPE, text=True, check=True)
                 emblem_metadata = emblem_export_output.stdout.splitlines()
                 
-                if len(emblem_metadata) == 5 and 'metadata::emblems' in emblem_metadata[4]:
+                if (len(emblem_metadata) == EXPECTED_METADATA_FIELDS and 
+                    'metadata::emblems' in emblem_metadata[EMBLEM_METADATA_FIELD_INDEX]):
                     try:
-                        path = emblem_metadata[1].split(': ')[1]
-                        emblems = emblem_metadata[4].split(': ')[1][1:-1].split(', ')
+                        path = emblem_metadata[PATH_METADATA_FIELD_INDEX].split(': ')[1]
+                        emblems = emblem_metadata[EMBLEM_METADATA_FIELD_INDEX].split(': ')[1][1:-1].split(', ')
                         
                         # items with unset emblems will keep the attribute, but with a string, 
                         # not vstring, value of '[]' (this is either indended or an oversight) - 
@@ -131,11 +147,12 @@ def scan_emblems(scan_path, json_file, recurse, setonly, purge, clear):
             except:
                 logger.warning(f'Failed to process: {item}')
             
-            if recurse:
+            if show_progress:
                 processed_percentage = processed_items * 100 // nr_items_to_process
                 
                 # update scan progress in 5% increments
-                if processed_percentage % 5 == 0 and last_processed_percentage != processed_percentage:
+                if (processed_percentage % PROGRESS_INDICATOR_PERCENT_INTERVAL == 0 and 
+                    last_processed_percentage != processed_percentage):
                     last_processed_percentage = processed_percentage
                     # no point in showing 100%, as 0% is also rightfully ignored
                     if processed_percentage != 100:
@@ -191,7 +208,7 @@ def import_emblems(json_file):
         processed_items = 0
         
         for key in json_data:
-            if os.path.isdir(key) or os.path.isfile(key):
+            if os.path.isfile(key) or os.path.isdir(key):
                 emblems = json_data[key]
                 
                 logger.info(f'Applying {emblems} emblem(s) to: {key}')
@@ -246,20 +263,28 @@ if __name__ == '__main__':
     # to its original "pristine" state, before any emblem data was ever applied with Caja/Nautilus
     optional.add_argument('-p', '--purge', help='Remove emblem data along with its meta-attribute', 
                           action='store_true')
+    optional.add_argument('-t', '--type', help='Type filter that can be set to either "file" or "folder"', 
+                          default=None)
     
     args = parser.parse_args()
+    
+    # ignore unsupported values by clearing the filter
+    if args.type and args.type not in TYPE_FILTERS:
+        logger.warning(f'Ignoring unsupported type filter value of "{args.type}".')
+        args.type = None
     
     if args.export:
         if os.path.isdir(args.source):
             if os.path.isdir(os.path.dirname(os.path.abspath(args.destination))):
-                scan_emblems(args.source, args.destination, args.recursive, 
-                             args.setonly, None, False)
+                scan_emblems(args.source, args.destination, args.type,  
+                             args.recursive, args.setonly, None, False)
             else:
                 logger.critical('Invalid export path!')
                 raise SystemExit(2)
         else:
             logger.critical('Invalid source directory!')
             raise SystemExit(1)
+    
     elif args.clear:
         if os.path.isdir(args.source):
             if args.purge:
@@ -268,12 +293,14 @@ if __name__ == '__main__':
                 option = input('ALL EMBLEM DATA IN THE SPECIFIED PATH WILL BE LOST! PROCEED (Y/N)? ')
             
             if option.upper() == 'Y':
-                scan_emblems(args.source, None, args.recursive, None, args.purge, True)
+                scan_emblems(args.source, None, args.type, args.recursive, 
+                             None, args.purge, True)
             else:
                 logger.info('Emblem clearing aborted.')
         else:
             logger.critical('Invalid clearing directory!')
             raise SystemExit(3)
+    
     else:
         if os.path.isfile(args.source):
             import_emblems(args.source)
