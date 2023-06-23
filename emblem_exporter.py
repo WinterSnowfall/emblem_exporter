@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 '''
 @author: Winter Snowfall
-@version: 1.00
-@date: 26/04/2023
+@version: 1.12
+@date: 23/06/2023
 
 Warning: Built for use with python 3.6+
 '''
@@ -11,23 +11,34 @@ import json
 import logging
 import argparse
 import subprocess
+import signal
 import os
 
-##logging configuration block
-logger_format = '%(asctime)s %(levelname)s >>> %(message)s'
-#logging level for other modules
-logging.basicConfig(format=logger_format, level=logging.ERROR) #DEBUG, INFO, WARNING, ERROR, CRITICAL
+# logging configuration block
+LOGGER_FORMAT = '%(asctime)s %(levelname)s >>> %(message)s'
+# logging level for other modules
+logging.basicConfig(format=LOGGER_FORMAT, level=logging.ERROR)
 logger = logging.getLogger(__name__)
-#logging level for current logger
-logger.setLevel(logging.INFO) #DEBUG, INFO, WARNING, ERROR, CRITICAL
+# logging level for current logger
+logger.setLevel(logging.INFO) # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
-##CONSTANTS
+# CONSTANTS
 EXPECTED_METADATA_FIELDS = 5
 PATH_METADATA_FIELD_INDEX = 1
 EMBLEM_METADATA_FIELD_INDEX = 4
 MIN_PROGRESS_INDICATOR_ITEMS = 10000
 PROGRESS_INDICATOR_PERCENT_INTERVAL = 10
 TYPE_FILTERS = ('file', 'folder')
+
+def sigterm_handler(signum, frame):
+    logger.debug('Stopping script due to SIGTERM.')
+    
+    raise SystemExit(0)
+
+def sigint_handler(signum, frame):
+    logger.debug('Stopping script due to SIGINT.')
+    
+    raise SystemExit(0)
 
 def path_crawler(base_path, type_filter, recurse):
     items_to_process = []
@@ -48,7 +59,7 @@ def path_crawler(base_path, type_filter, recurse):
     return items_to_process
 
 def scan_emblems(scan_path, json_file, type_filter, recurse, setonly, purge, clear):
-    json_data_dict = {}
+    json_data = {}
     
     logger.debug(f'Scan path: {scan_path}')
     
@@ -103,7 +114,7 @@ def scan_emblems(scan_path, json_file, type_filter, recurse, setonly, purge, cle
                                 logger.info(f'Ignoring empty emblem for: {path}')
                             else:
                                 logger.info(f'Found {emblems} emblem(s) for: {path}')
-                                json_data_dict.update({path: emblems})
+                                json_data.update({path: emblems})
                                 emblems_exported += 1
                         
                         else:
@@ -140,8 +151,8 @@ def scan_emblems(scan_path, json_file, type_filter, recurse, setonly, purge, cle
                     
                     except:
                         raise
-            
-            except KeyboardInterrupt:
+                
+            except SystemExit:
                 raise
             
             except:
@@ -159,8 +170,8 @@ def scan_emblems(scan_path, json_file, type_filter, recurse, setonly, purge, cle
                         logger.info(f'Proccessed {processed_items} items, {processed_percentage}% of total.')
     
     # allow the export of partially completed scans
-    except KeyboardInterrupt:
-        logger.warning('Halting emblems scan due to KeyboardInterrupt!')
+    except SystemExit:
+        logger.warning('Halting emblems scan due to termination signal!')
     
     logger.info('Emblems scan completed.')
     
@@ -172,8 +183,8 @@ def scan_emblems(scan_path, json_file, type_filter, recurse, setonly, purge, cle
                 logger.info(f'Succesfully cleared {emblems_cleared}/{emblems_found} emblems.')
     
     else:
-        if len(json_data_dict) > 0:
-            json_export = json.dumps(json_data_dict, sort_keys=True, indent=4, 
+        if len(json_data) > 0:
+            json_export = json.dumps(json_data, sort_keys=True, indent=4, 
                                      separators=(',', ': '), ensure_ascii=False)
             
             logger.debug(f'JSON: {json_export}')
@@ -240,6 +251,11 @@ def import_emblems(json_file):
         logger.warning('Nothing to import!')
 
 if __name__ == '__main__':
+    # catch SIGTERM and exit gracefully
+    signal.signal(signal.SIGTERM, sigterm_handler)
+    # catch SIGINT and exit gracefully
+    signal.signal(signal.SIGINT, sigint_handler)
+    
     parser = argparse.ArgumentParser(description=('GIO wrapper for Caja/Nautilus emblems import/export and clearing'), 
                                      add_help=False)
     

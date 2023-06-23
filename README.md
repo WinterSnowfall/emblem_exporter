@@ -1,6 +1,6 @@
 # emblem-exporter
 
-GIO wrapper script written in Python 3, designed for rapid import/export and clearing of Nautilus/Caja emblems. It will use the GIO CLI to generate a JSON export of all the emblems attached to files/folders in a specified path. Similarly, it can ingest a JSON file to reapply all exported emblems (for now it relies on absolute paths here).
+GIO wrapper script written in Python 3, designed for rapid import/export and clearing of Nautilus/Caja emblems. It will use the GIO CLI to generate a JSON export of all the emblems attached to files/folders in a specified path. Similarly, it can ingest a JSON file to reapply all exported emblems (it relies on absolute paths here).
 
 ### How to use
 
@@ -40,5 +40,5 @@ BUT BE CAREFUL AS THE CHANGES ARE PERMANENT and there's no way to recover your e
 
 ### Can I use this script to migrate my emblems to a different host?
 
-Yes, as long as the absolute paths on that host are the same (for the JSON items with exported emblems), you'll be able to migrate everything correctly. Currently there's no support for relative paths, but it may be added in the future.
+Yes, as long as the absolute paths on that host are the same (for the JSON items with exported emblems), you'll be able to migrate everything correctly.
 
