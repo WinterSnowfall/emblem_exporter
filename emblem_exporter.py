@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 '''
 @author: Winter Snowfall
-@version: 1.20
-@date: 30/09/2023
+@version: 1.22
+@date: 08/10/2023
 
 Warning: Built for use with python 3.6+
 '''
@@ -108,7 +108,7 @@ def scan_metadata(scan_path, json_file, type_filter, recurse, setonly, metadata_
 
                 metadata_dictionary = {}
                 metadata_found = False
-                no_clearing_failures = True
+                metadata_cleared = False
                 item_path = None
 
                 for metadata_line in item_metadata:
@@ -159,6 +159,7 @@ def scan_metadata(scan_path, json_file, type_filter, recurse, setonly, metadata_
                                                     subprocess.run(['gio', 'set', item_path,
                                                                     'metadata::emblems', '[]'], check=True)
                                                     logger.info(f'Found and cleared emblems for: {item_path}')
+                                                    metadata_cleared = True
                                             # for other fields simply set a blank value
                                             else:
                                                 if metadata_value != '':
@@ -166,6 +167,7 @@ def scan_metadata(scan_path, json_file, type_filter, recurse, setonly, metadata_
                                                     subprocess.run(['gio', 'set', item_path,
                                                                     f'metadata::{metadata_field_name}', ''], check=True)
                                                     logger.info(f'Found and cleared {metadata_field_name} for: {item_path}')
+                                                    metadata_cleared = True
 
                                         else:
                                             # annotations will always be blank by default, so they cannot be purged
@@ -175,6 +177,7 @@ def scan_metadata(scan_path, json_file, type_filter, recurse, setonly, metadata_
                                                     subprocess.run(['gio', 'set', item_path,
                                                                     'metadata::annotation', ''], check=True)
                                                     logger.info(f'Found and purged annotations for: {item_path}')
+                                                    metadata_cleared = True
 
                                             # in order to purge metadata from an item and mark it as if
                                             # it never had metadata attached, one must remove the attribute
@@ -184,6 +187,7 @@ def scan_metadata(scan_path, json_file, type_filter, recurse, setonly, metadata_
                                                 subprocess.run(['gio', 'set', '-t', 'unset', item_path,
                                                                 f'metadata::{metadata_field_name}'], check=True)
                                                 logger.info(f'Found and purged {metadata_field_name} for: {item_path}')
+                                                metadata_cleared = True
                                     
                                     except SystemExit:
                                         raise
@@ -194,7 +198,7 @@ def scan_metadata(scan_path, json_file, type_filter, recurse, setonly, metadata_
                                         else:
                                             logger.warning(f'Failed to purge {metadata_field_name} for: {item_path}')
 
-                                        no_clearing_failures = False
+                                        metadata_cleared = False
 
                             else:
                                 logger.debug(f'Found excluded metadata field: {metadata_field_name}')
@@ -211,7 +215,7 @@ def scan_metadata(scan_path, json_file, type_filter, recurse, setonly, metadata_
                 if clear:
                     if metadata_found:
                         items_found += 1
-                    if no_clearing_failures:
+                    if metadata_cleared:
                         items_cleared += 1
 
             except SystemExit:
